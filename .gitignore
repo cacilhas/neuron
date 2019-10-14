@@ -1,0 +1,9 @@
+.*
+*.bak
+*.dna
+*.txt
+*.trail
+*~
+/vendor
+!.gitignore
+!/vendor/manifest
