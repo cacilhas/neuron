@@ -103,7 +103,7 @@ if err != nil {
 - `NewNeuron(Neuron) (Neuron, error)`
   - Clone the neuron supplied.
 - `NewNeuron(string) (Neuron, error)`
-  - Deserialise a
+  - Deserialise a neuron.
 - `neuron.Compute(...float64) int`
   - Compute the output from a list of parameters. There must be supplied as many parameters as genes.
 - `neuron.Equals(Neuron) bool`
