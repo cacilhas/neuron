@@ -77,6 +77,13 @@ func TestNet(t *testing.T) {
 				}
 			})
 		})
+
+		t.Run("String", func(t *testing.T) {
+			expected := "SENSORS: sensor 1, sensor 2, sensor 3\nACTIONS: action 1, action 2\nFRONT NEURONS:\n001G00012BVVVVGQ00002O8\n001VVVVU280000G3VVVVS20\n\nBACK NEURONS:\n001FVVVV2S00002D\n0010000143VVVVTO\n\n-----\n"
+			if got := net.String(); got != expected {
+				t.Fatalf("expected\n%v\ngot\n%v", expected, got)
+			}
+		})
 	})
 }
 

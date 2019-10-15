@@ -3,6 +3,7 @@ package neuron
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // NeuralNet represents a neural net
@@ -10,6 +11,7 @@ type NeuralNet interface {
 	GetActions() []string
 	GetSensors() []string
 	Compute(map[string]float64) (map[string]bool, error)
+	String() string
 }
 
 type neuralnet struct {
@@ -111,6 +113,26 @@ func (net neuralnet) checkInput(incoming map[string]float64) error {
 		}
 	}
 	return nil
+}
+
+func (net neuralnet) String() string {
+	var buf strings.Builder
+	buf.WriteString("SENSORS: ")
+	buf.WriteString(strings.Join(net.sensors, ", "))
+	buf.WriteString("\nACTIONS: ")
+	buf.WriteString(strings.Join(net.actions, ", "))
+	buf.WriteString("\nFRONT NEURONS:\n")
+	for _, neuron := range net.frontNeuronSet {
+		buf.WriteString(neuron.String())
+		buf.WriteString("\n")
+	}
+	buf.WriteString("\nBACK NEURONS:\n")
+	for _, neuron := range net.backNeuronSet {
+		buf.WriteString(neuron.String())
+		buf.WriteString("\n")
+	}
+	buf.WriteString("\n-----\n")
+	return buf.String()
 }
 
 func usort(args []string) []string {
