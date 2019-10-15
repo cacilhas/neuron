@@ -2,16 +2,20 @@ package neuron
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"math/rand"
+	"strings"
 )
 
 // Neuron represents a neuron
 type Neuron interface {
 	GetSize() int
-	GetGen(int) int
-	Compute(...int) int
-	Marshal() *bytes.Buffer
+	GetGene(int) int
+	Compute(...float64) int
+	Marshal() <-chan byte
 	String() string
 }
 
@@ -20,96 +24,154 @@ type neuron []int
 // NewNeuron create a new neuron
 func NewNeuron(data interface{}) (Neuron, error) {
 
-	switch v := data.(type) {
+	switch value := data.(type) {
 	case []int:
-		var n neuron
-		copy(n, v)
-		return n, nil
+		neu := make(neuron, len(value))
+		copy(neu, value)
+		return neu, nil
 
 	case neuron:
-		return v, nil
+		return value, nil
 
 	case []byte:
-		return neuronFromBytes(v)
+		return neuronFromBytes(value)
+
+	case io.Reader:
+		return readFile(value)
 
 	case *bytes.Buffer:
-		return neuronFromBytes(v.Bytes())
+		return neuronFromBytes(value.Bytes())
+
+	case int:
+		neu := make(neuron, value)
+		for i := 0; i < value; i++ {
+			neu[i] = int(rand.Int31n(2000)) - 1000
+		}
+		return neu, nil
 
 	case string:
-		src, err := hex.DecodeString(v)
+		data, err := hex.DecodeString(strings.TrimSpace(value))
 		if err == nil {
-			return neuronFromBytes(src)
+			return neuronFromBytes(data)
 		}
 		return nil, err
 
 	default:
-		return nil, fmt.Errorf("unexpected type %T", v)
+		return nil, fmt.Errorf("unexpected type %T", value)
 	}
 }
 
-func neuronFromBytes(data []byte) (Neuron, error) {
-	if len(data) < 4 {
-		return nil, fmt.Errorf("invalid input")
-	}
-
-	size := 0
-	for i := 0; i < 4; i++ {
-		size += int(data[i]) << uint(8*i)
-	}
-
-	if len(data) < (size+1)*4 {
-		return nil, fmt.Errorf("invalid input")
-	}
-
-	buf := make([]int, size)
-	for i := 0; i < size; i++ {
-		for j := 0; j < 4; j++ {
-			index := (i+1)*4 + j
-			buf[i] += int(data[index]) << uint(8*j)
-		}
-	}
-
-	return neuron(buf), nil
+func (neu neuron) GetSize() int {
+	return len(neu)
 }
 
-func (n neuron) GetSize() int {
-	return len(n)
+func (neu neuron) GetGene(index int) int {
+	return neu[index]
 }
 
-func (n neuron) GetGen(index int) int {
-	return n[index]
-}
-
-func (n neuron) Compute(data ...int) int {
-	if len(data) != len(n) {
-		panic(fmt.Sprintf("wrong number or parameters, expect %v, got %v", len(n), len(data)))
+func (neu neuron) Compute(data ...float64) int {
+	if len(data) != neu.GetSize() {
+		panic(fmt.Sprintf("expected %v parameters, got %v", neu.GetSize(), len(data)))
 	}
 
-	res := 0
-	for index, value := range n {
-		res += data[index] * value
+	sum := 0.0
+
+	for index, value := range data {
+		sum += value * float64(neu.GetGene(index))
 	}
 
-	if res > 0 {
-		return res
+	if sum > 0 {
+		return int(sum)
 	}
 	return 0
 }
 
-func (n neuron) Marshal() *bytes.Buffer {
-	var buf bytes.Buffer
-	size := len(n)
-	for i := 0; i < 4; i++ {
-		buf.WriteByte(byte((size >> uint(8*i)) & 0xff))
-	}
-	for _, value := range n {
-		for i := 0; i < 4; i++ {
-			buf.WriteByte(byte((value >> uint(8*i)) & 0xff))
+func (neu neuron) Marshal() <-chan byte {
+	ch := make(chan byte)
+
+	go func() {
+		size := neu.GetSize()
+		var buf [4]byte
+		binary.LittleEndian.PutUint16(buf[:], uint16(size))
+		ch <- buf[0]
+		ch <- buf[1]
+
+		for _, gene := range neu {
+			var cur uint32
+			if gene < 0 {
+				cur = uint32(int64(0x100000000) + int64(gene))
+			} else {
+				cur = uint32(gene)
+			}
+			binary.LittleEndian.PutUint32(buf[:], cur)
+			for i := 0; i < 4; i++ {
+				ch <- buf[i]
+			}
 		}
-	}
-	return bytes.NewBuffer(buf.Bytes())
+	}()
+
+	return ch
 }
 
-func (n neuron) String() string {
-	return hex.EncodeToString(n.Marshal().Bytes())
+func (neu neuron) String() string {
+	size := neu.GetSize()
+	buf := make([]byte, size)
+	ch := neu.Marshal()
+	for i := 0; i < size; i++ {
+		buf[i] = <-ch
+	}
+	return hex.EncodeToString(buf)
+}
+
+func readFile(input io.Reader) (Neuron, error) {
+	var buf [2]byte
+	if _, err := input.Read(buf[:]); err != nil {
+		return nil, err
+	}
+	size := 4 * int(binary.LittleEndian.Uint16(buf[:]))
+	data := make([]byte, 2+size)
+	copy(data, buf[:])
+	if _, err := input.Read(data[2:]); err != nil {
+		return nil, err
+	}
+	return neuronFromBytes(data)
+}
+
+func neuronFromBytes(input []byte) (Neuron, error) {
+	res := make(chan int)
+	ech := make(chan error)
+
+	size := int(binary.LittleEndian.Uint16(input))
+	go processBytes(input[2:], size, res, ech)
+	neu := make(neuron, size)
+
+	for i := 0; i < size; {
+		select {
+		case err := <-ech:
+			return nil, err
+		case value := <-res:
+			neu[i] = value
+			i++
+		default:
+		}
+	}
+
+	return neu, nil
+}
+
+func processBytes(body []byte, size int, res chan<- int, ech chan<- error) {
+	defer func() {
+		if err, ok := recover().(error); ok {
+			ech <- err
+		}
+	}()
+
+	for i := 0; i < size; i++ {
+		value := binary.LittleEndian.Uint32(body[i*4:])
+		if value >= 0x80000000 {
+			res <- int(int64(value) - int64(0x100000000))
+		} else {
+			res <- int(value)
+		}
+	}
 }
