@@ -209,9 +209,10 @@ func (net neuralnet) Save(out io.Writer) error {
 	buf.Write(current[:])
 	for _, neuron := range net.frontNeuronSet {
 		ch := neuron.Marshal()
-		for i := 0; i < 2+4*neuron.GetSize(); i++ {
-			data := <-ch
-			buf.Write([]byte{data})
+		value, ok := <-ch
+		for ok {
+			buf.Write([]byte{value})
+			value, ok = <-ch
 		}
 	}
 
@@ -220,9 +221,10 @@ func (net neuralnet) Save(out io.Writer) error {
 	buf.Write(current[:])
 	for _, neuron := range net.backNeuronSet {
 		ch := neuron.Marshal()
-		for i := 0; i < 2+4*neuron.GetSize(); i++ {
-			data := <-ch
-			buf.Write([]byte{data})
+		value, ok := <-ch
+		for ok {
+			buf.Write([]byte{value})
+			value, ok = <-ch
 		}
 	}
 

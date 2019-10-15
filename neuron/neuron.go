@@ -113,6 +113,8 @@ func (neu neuron) Marshal() <-chan byte {
 	ch := make(chan byte)
 
 	go func() {
+		defer close(ch)
+
 		size := neu.GetSize()
 		var buf [4]byte
 		binary.BigEndian.PutUint16(buf[:], uint16(size))
@@ -137,14 +139,15 @@ func (neu neuron) Marshal() <-chan byte {
 }
 
 func (neu neuron) String() string {
-	size := 2 + 4*neu.GetSize()
-	buf := make([]byte, size)
+	var buf bytes.Buffer
 	ch := neu.Marshal()
-	for i := 0; i < size; i++ {
-		buf[i] = <-ch
+	value, ok := <-ch
+	for ok {
+		buf.WriteByte(value)
+		value, ok = <-ch
 	}
 	encoder := base32.HexEncoding.WithPadding(base32.NoPadding)
-	return encoder.EncodeToString(buf)
+	return encoder.EncodeToString(buf.Bytes())
 }
 
 func readFile(input io.Reader) (Neuron, error) {
@@ -163,7 +166,9 @@ func readFile(input io.Reader) (Neuron, error) {
 
 func neuronFromBytes(input []byte) (Neuron, error) {
 	res := make(chan int)
+	defer close(res)
 	ech := make(chan error)
+	defer close(ech)
 
 	size := int(binary.BigEndian.Uint16(input))
 	go processBytes(input[2:], size, res, ech)
