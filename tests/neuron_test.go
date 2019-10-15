@@ -131,4 +131,74 @@ func TestNeuron(t *testing.T) {
 			t.Fatalf("expected %v, got %v", expected, buf)
 		}
 	})
+
+	t.Run("Compute", func(t *testing.T) {
+		neu, _ := neuron.NewNeuron("005FVVVVVFVVVVVSVVVVVVFVVVVVTVVVVVVG000000000001000000G0000060000020")
+		t.Run("1st parameter (-5)", func(t *testing.T) {
+			if got := neu.Compute(2.5, 0, 0, 0, 0, 0, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("2nd parameter (-4)", func(t *testing.T) {
+			if got := neu.Compute(0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("3rd parameter (-3)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 2.5, 0, 0, 0, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("4th parameter (-2)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 2.5, 0, 0, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("5th parameter (-1)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 2.5, 0, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("6th parameter (0)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 0, 2.5, 0, 0, 0, 0); got != 0 {
+				t.Fatalf("expected 0, got %v", got)
+			}
+		})
+		t.Run("7th parameter (1)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 0, 0, 2.5, 0, 0, 0); got != 2 {
+				t.Fatalf("expected 2, got %v", got)
+			}
+		})
+		t.Run("8th parameter (2)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 0, 0, 0, 2.5, 0, 0); got != 5 {
+				t.Fatalf("expected 5, got %v", got)
+			}
+		})
+		t.Run("9th parameter (3)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 0, 0, 0, 0, 2.5, 0); got != 7 {
+				t.Fatalf("expected 7, got %v", got)
+			}
+		})
+		t.Run("10th parameter (4)", func(t *testing.T) {
+			if got := neu.Compute(0, 0, 0, 0, 0, 0, 0, 0, 0, 2.5); got != 10 {
+				t.Fatalf("expected 10, got %v", got)
+			}
+		})
+		t.Run("missing parameter", func(t *testing.T) {
+			defer func() {
+				if err := recover(); err == nil {
+					t.Fatalf("expected fatal not raised")
+				}
+			}()
+			neu.Compute(0, 0, 0, 0, 0, 0, 0, 0, 0)
+		})
+		t.Run("extra parameter", func(t *testing.T) {
+			defer func() {
+				if err := recover(); err == nil {
+					t.Fatalf("expected fatal not raised")
+				}
+			}()
+			neu.Compute(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+		})
+	})
 }
