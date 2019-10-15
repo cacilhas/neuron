@@ -6,7 +6,6 @@ import (
 	"io"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/cacilhas/neuron/neuron"
 )
@@ -116,36 +115,6 @@ func TestNeuron(t *testing.T) {
 				t.Fatalf("expected 00100001C7VVVVGI, got %v", got)
 			}
 		})
-	})
-
-	t.Run("WriteToFile", func(t *testing.T) {
-		r, w := io.Pipe()
-		neu, _ := neuron.NewNeuron("005FVVVVVFVVVVVSVVVVVVFVVVVVTVVVVVVG000000000001000000G0000060000020")
-		buf := make([]byte, 2+4*neu.GetSize())
-		go func() {
-			neuron.WriteToFile(w, neu)
-			w.Close()
-		}()
-		time.Sleep(100 * time.Millisecond)
-		if sz, err := r.Read(buf); err != nil || sz != 42 {
-			t.Fatalf("[size %v] unexpected error %v", sz, err)
-		}
-		expected := []byte{
-			0x00, 0x0a,
-			0xff, 0xff, 0xff, 0xfb,
-			0xff, 0xff, 0xff, 0xfc,
-			0xff, 0xff, 0xff, 0xfd,
-			0xff, 0xff, 0xff, 0xfe,
-			0xff, 0xff, 0xff, 0xff,
-			0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x01,
-			0x00, 0x00, 0x00, 0x02,
-			0x00, 0x00, 0x00, 0x03,
-			0x00, 0x00, 0x00, 0x04,
-		}
-		if string(buf) != string(expected) {
-			t.Fatalf("expected %v, got %v", expected, buf)
-		}
 	})
 
 	t.Run("Compute", func(t *testing.T) {

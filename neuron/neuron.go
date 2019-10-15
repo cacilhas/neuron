@@ -64,18 +64,6 @@ func NewNeuron(data interface{}) (Neuron, error) {
 	}
 }
 
-// WriteToFile write a neuron to an io.Writer
-func WriteToFile(fp io.Writer, neu Neuron) error {
-	size := 2 + 4*neu.GetSize()
-	buf := make([]byte, size)
-	ch := neu.Marshal()
-	for i := 0; i < size; i++ {
-		buf[i] = <-ch
-	}
-	_, err := fp.Write(buf)
-	return err
-}
-
 func (neu neuron) GetSize() int {
 	return len(neu)
 }
