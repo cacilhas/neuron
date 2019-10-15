@@ -193,7 +193,7 @@ func (net neuralnet) Save(out io.Writer) error {
 	buf.Write(current[:])
 	for _, sensor := range net.sensors {
 		buf.Write([]byte(sensor))
-		buf.Write([]byte{0})
+		buf.WriteByte(0x00)
 	}
 
 	// Serialise actions
@@ -201,7 +201,7 @@ func (net neuralnet) Save(out io.Writer) error {
 	buf.Write(current[:])
 	for _, action := range net.actions {
 		buf.Write([]byte(action))
-		buf.Write([]byte{0})
+		buf.WriteByte(0x00)
 	}
 
 	// Serialise front neurons
@@ -211,7 +211,7 @@ func (net neuralnet) Save(out io.Writer) error {
 		ch := neuron.Marshal()
 		value, ok := <-ch
 		for ok {
-			buf.Write([]byte{value})
+			buf.WriteByte(value)
 			value, ok = <-ch
 		}
 	}
@@ -223,7 +223,7 @@ func (net neuralnet) Save(out io.Writer) error {
 		ch := neuron.Marshal()
 		value, ok := <-ch
 		for ok {
-			buf.Write([]byte{value})
+			buf.WriteByte(value)
 			value, ok = <-ch
 		}
 	}
