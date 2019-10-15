@@ -103,6 +103,57 @@ func TestNet(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("LoadNet", func(t *testing.T) {
+		data, _ := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString("01OG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000006000049FVVVU380000B1001VVVVU280000G3VVVVS20008000002VVVVU5O00004Q0020000287VVVVRG0000000")
+		r, w := io.Pipe()
+		go func() {
+			w.Write(data)
+			w.Close()
+		}()
+		net, err := neuron.LoadNet(r)
+		if err != nil {
+			t.Fatalf("unexpected error %v", err)
+		}
+
+		t.Run("GetActions", func(t *testing.T) {
+			expected := "action 1, action 2"
+			if got := strings.Join(net.GetActions(), ", "); got != expected {
+				t.Fatalf("expected %v, got %v", expected, got)
+			}
+		})
+
+		t.Run("GetSensors", func(t *testing.T) {
+			expected := "sensor 1, sensor 2, sensor 3"
+			if got := strings.Join(net.GetSensors(), ", "); got != expected {
+				t.Fatalf("expected %v, got %v", expected, got)
+			}
+		})
+
+		t.Run("GetFrontNeurons", func(t *testing.T) {
+			var buf strings.Builder
+			for _, neu := range net.GetFrontNeurons() {
+				buf.WriteString(neu.String())
+				buf.WriteByte(0x20)
+			}
+			expected := "001G00012BVVVVGQ00002O8 001VVVVU280000G3VVVVS20 "
+			if got := buf.String(); got != expected {
+				t.Fatalf("expected %v, got %v", expected, got)
+			}
+		})
+
+		t.Run("GetBackNeurons", func(t *testing.T) {
+			var buf strings.Builder
+			for _, neu := range net.GetBackNeurons() {
+				buf.WriteString(neu.String())
+				buf.WriteByte(0x20)
+			}
+			expected := "001FVVVV2S00002D 0010000143VVVVTO "
+			if got := buf.String(); got != expected {
+				t.Fatalf("expected %v, got %v", expected, got)
+			}
+		})
+	})
 }
 
 func getNeuron(t *testing.T, data interface{}) neuron.Neuron {

@@ -65,6 +65,37 @@ func NewNeuralNet(sensors, actions []string, frontNeuronSet, backNeuronSet []Neu
 	return &neuralnet{sortedActions, frontNeuronSet, backNeuronSet, sortedSensors}, nil
 }
 
+// LoadNet load a new neural net from an I/O reader
+func LoadNet(input io.Reader) (NeuralNet, error) {
+	var buf [4]byte
+	// Discard long size
+	if _, err := input.Read(buf[:]); err != nil {
+		return nil, err
+	}
+
+	var err error
+	var sensors []string
+	var actions []string
+	var front []Neuron
+	var back []Neuron
+
+	if sensors, err = loadStrings(input); err != nil {
+		return nil, err
+	}
+	if actions, err = loadStrings(input); err != nil {
+		return nil, err
+	}
+	if front, err = loadNeurons(input); err != nil {
+		return nil, err
+	}
+	if back, err = loadNeurons(input); err != nil {
+		return nil, err
+	}
+
+	// Put everything together
+	return NewNeuralNet(sensors, actions, front, back)
+}
+
 func (net neuralnet) GetActions() []string {
 	actions := make([]string, len(net.actions))
 	copy(actions, net.actions)
@@ -157,18 +188,23 @@ func (net neuralnet) Save(out io.Writer) error {
 	var buf bytes.Buffer
 	var current [4]byte
 
+	// Serialise sensors
 	binary.BigEndian.PutUint16(current[:], uint16(len(net.sensors)))
 	buf.Write(current[:])
 	for _, sensor := range net.sensors {
 		buf.Write([]byte(sensor))
 		buf.Write([]byte{0})
 	}
+
+	// Serialise actions
 	binary.BigEndian.PutUint16(current[:], uint16(len(net.actions)))
 	buf.Write(current[:])
 	for _, action := range net.actions {
 		buf.Write([]byte(action))
 		buf.Write([]byte{0})
 	}
+
+	// Serialise front neurons
 	binary.BigEndian.PutUint16(current[:], uint16(len(net.frontNeuronSet)))
 	buf.Write(current[:])
 	for _, neuron := range net.frontNeuronSet {
@@ -178,6 +214,8 @@ func (net neuralnet) Save(out io.Writer) error {
 			buf.Write([]byte{data})
 		}
 	}
+
+	// Serialise back neurons
 	binary.BigEndian.PutUint16(current[:], uint16(len(net.backNeuronSet)))
 	buf.Write(current[:])
 	for _, neuron := range net.backNeuronSet {
@@ -187,8 +225,11 @@ func (net neuralnet) Save(out io.Writer) error {
 			buf.Write([]byte{data})
 		}
 	}
+
+	// Add tail
 	buf.Write([]byte{0, 0, 0, 0})
 
+	// Add header
 	binary.BigEndian.PutUint16(current[:], uint16(buf.Len()))
 	if _, err := out.Write(current[:]); err != nil {
 		return err
@@ -212,4 +253,46 @@ func usort(args []string) []string {
 	}
 	sort.Strings(res)
 	return res
+}
+
+func loadNeurons(input io.Reader) ([]Neuron, error) {
+	var buf [4]byte
+	if _, err := input.Read(buf[:]); err != nil {
+		return nil, err
+	}
+	size := int(binary.BigEndian.Uint16(buf[:]))
+	res := make([]Neuron, size)
+
+	for i := 0; i < size; i++ {
+		var err error
+		res[i], err = NewNeuron(input)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func loadStrings(input io.Reader) ([]string, error) {
+	var buf [4]byte
+	if _, err := input.Read(buf[:]); err != nil {
+		return nil, err
+	}
+	size := int(binary.BigEndian.Uint16(buf[:]))
+	set := make([]string, size)
+
+	for i := 0; i < size; i++ {
+		current := []byte{0xff}
+		var str strings.Builder
+		for current[0] != 0 {
+			if _, err := input.Read(current[:]); err != nil {
+				return nil, err
+			}
+			if current[0] != 0x00 {
+				str.WriteByte(current[0])
+			}
+		}
+		set[i] = str.String()
+	}
+	return set, nil
 }
