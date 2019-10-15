@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -13,8 +14,8 @@ import (
 func TestNeuron(t *testing.T) {
 	t.Run("NewNeuron", func(t *testing.T) {
 		t.Run("[]int", func(t *testing.T) {
-			input := [...]int{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4}
-			neu, err := neuron.NewNeuron(input[:])
+			input := []int{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4}
+			neu, err := neuron.NewNeuron(input)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}
@@ -47,15 +48,15 @@ func TestNeuron(t *testing.T) {
 		})
 
 		t.Run("[]byte", func(t *testing.T) {
-			input := [...]byte{0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00}
-			neu, err := neuron.NewNeuron(input[:])
+			input := []byte{0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00}
+			neu, err := neuron.NewNeuron(input)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}
 			if got := neu.GetSize(); got != 2 {
 				t.Fatalf("expected 10, got %v", got)
 			}
-			for i, expect := range [...]int{0, 256} {
+			for i, expect := range []int{0, 256} {
 				if got := neu.GetGene(i); got != expect {
 					t.Fatalf("expected %v, got %v", expect, got)
 				}
@@ -94,10 +95,25 @@ func TestNeuron(t *testing.T) {
 			if got := neu.GetSize(); got != 2 {
 				t.Fatalf("expected 10, got %v", got)
 			}
-			for i, expect := range [...]int{-1, 1} {
+			for i, expect := range []int{-1, 1} {
 				if got := neu.GetGene(i); got != expect {
 					t.Fatalf("expected %v, got %v", expect, got)
 				}
+			}
+		})
+
+		t.Run("int", func(t *testing.T) {
+			rand.Seed(0)
+			neu, err := neuron.NewNeuron(2)
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
+			}
+			if got := neu.String(); got != "001000012BVVVVGQ" {
+				t.Fatalf("expected 001000012BVVVVGQ, got %v", got)
+			}
+			neu2, _ := neuron.NewNeuron(2)
+			if got := neu2.String(); got != "00100001C7VVVVGI" {
+				t.Fatalf("expected 00100001C7VVVVGI, got %v", got)
 			}
 		})
 	})
