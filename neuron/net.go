@@ -58,11 +58,15 @@ func NewNeuralNet(sensors, actions []string, frontNeuronSet, backNeuronSet []Neu
 }
 
 func (net neuralnet) GetActions() []string {
-	return net.actions[:]
+	actions := make([]string, len(net.actions))
+	copy(actions, net.actions)
+	return actions
 }
 
 func (net neuralnet) GetSensors() []string {
-	return net.sensors[:]
+	sensors := make([]string, len(net.sensors))
+	copy(sensors, net.sensors)
+	return sensors
 }
 
 func (net neuralnet) Compute(incoming map[string]float64) (map[string]bool, error) {
@@ -80,7 +84,7 @@ func (net neuralnet) Compute(incoming map[string]float64) (map[string]bool, erro
 		middle[i] = neuron.Compute(input...)
 	}
 
-	var res map[string]bool
+	res := make(map[string]bool)
 
 	for i, neuron := range net.backNeuronSet {
 		input := make([]float64, len(middle))
@@ -97,7 +101,7 @@ func (net neuralnet) checkInput(incoming map[string]float64) error {
 	if len(incoming) != len(net.sensors) {
 		return fmt.Errorf("incoming mismatch sensors")
 	}
-	var sensors map[string]bool
+	sensors := make(map[string]bool)
 	for _, sensor := range net.sensors {
 		sensors[sensor] = true
 	}
@@ -110,7 +114,7 @@ func (net neuralnet) checkInput(incoming map[string]float64) error {
 }
 
 func usort(args []string) []string {
-	var buf map[string]bool
+	buf := make(map[string]bool)
 	for _, arg := range args {
 		buf[arg] = true
 	}
