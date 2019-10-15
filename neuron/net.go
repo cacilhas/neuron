@@ -1,7 +1,10 @@
 package neuron
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 )
@@ -11,6 +14,7 @@ type NeuralNet interface {
 	GetActions() []string
 	GetSensors() []string
 	Compute(map[string]float64) (map[string]bool, error)
+	Save(io.Writer) error
 	String() string
 }
 
@@ -133,6 +137,52 @@ func (net neuralnet) String() string {
 	}
 	buf.WriteString("\n-----\n")
 	return buf.String()
+}
+
+func (net neuralnet) Save(out io.Writer) error {
+	var buf bytes.Buffer
+	var current [4]byte
+
+	binary.BigEndian.PutUint16(current[:], uint16(len(net.sensors)))
+	buf.Write(current[:])
+	for _, sensor := range net.sensors {
+		buf.Write([]byte(sensor))
+		buf.Write([]byte{0})
+	}
+	binary.BigEndian.PutUint16(current[:], uint16(len(net.actions)))
+	buf.Write(current[:])
+	for _, action := range net.actions {
+		buf.Write([]byte(action))
+		buf.Write([]byte{0})
+	}
+	binary.BigEndian.PutUint16(current[:], uint16(len(net.frontNeuronSet)))
+	buf.Write(current[:])
+	for _, neuron := range net.frontNeuronSet {
+		ch := neuron.Marshal()
+		for i := 0; i < 2+4*neuron.GetSize(); i++ {
+			data := <-ch
+			buf.Write([]byte{data})
+		}
+	}
+	binary.BigEndian.PutUint16(current[:], uint16(len(net.backNeuronSet)))
+	buf.Write(current[:])
+	for _, neuron := range net.backNeuronSet {
+		ch := neuron.Marshal()
+		for i := 0; i < 2+4*neuron.GetSize(); i++ {
+			data := <-ch
+			buf.Write([]byte{data})
+		}
+	}
+	buf.Write([]byte{0, 0, 0, 0})
+
+	binary.BigEndian.PutUint16(current[:], uint16(buf.Len()))
+	if _, err := out.Write(current[:]); err != nil {
+		return err
+	}
+	if _, err := out.Write(buf.Bytes()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func usort(args []string) []string {

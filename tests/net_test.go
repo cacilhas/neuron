@@ -1,6 +1,9 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/base32"
+	"io"
 	"math/rand"
 	"strings"
 	"testing"
@@ -82,6 +85,21 @@ func TestNet(t *testing.T) {
 			expected := "SENSORS: sensor 1, sensor 2, sensor 3\nACTIONS: action 1, action 2\nFRONT NEURONS:\n001G00012BVVVVGQ00002O8\n001VVVVU280000G3VVVVS20\n\nBACK NEURONS:\n001FVVVV2S00002D\n0010000143VVVVTO\n\n-----\n"
 			if got := net.String(); got != expected {
 				t.Fatalf("expected\n%v\ngot\n%v", expected, got)
+			}
+		})
+
+		t.Run("Save", func(t *testing.T) {
+			r, w := io.Pipe()
+			go func() {
+				net.Save(w)
+				w.Close()
+			}()
+			var buf bytes.Buffer
+			buf.ReadFrom(r)
+			got := base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString(buf.Bytes())
+			expected := "01OG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000006000049FVVVU380000B1001VVVVU280000G3VVVVS20008000002VVVVU5O00004Q0020000287VVVVRG0000000"
+			if got != expected {
+				t.Fatalf("expected %v, got %v", expected, got)
 			}
 		})
 	})
