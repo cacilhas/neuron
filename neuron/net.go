@@ -13,6 +13,8 @@ import (
 type NeuralNet interface {
 	GetActions() []string
 	GetSensors() []string
+	GetFrontNeurons() []Neuron
+	GetBackNeurons() []Neuron
 	Compute(map[string]float64) (map[string]bool, error)
 	Save(io.Writer) error
 	String() string
@@ -73,6 +75,18 @@ func (net neuralnet) GetSensors() []string {
 	sensors := make([]string, len(net.sensors))
 	copy(sensors, net.sensors)
 	return sensors
+}
+
+func (net neuralnet) GetFrontNeurons() []Neuron {
+	neurons := make([]Neuron, len(net.frontNeuronSet))
+	copy(neurons, net.frontNeuronSet)
+	return neurons
+}
+
+func (net neuralnet) GetBackNeurons() []Neuron {
+	neurons := make([]Neuron, len(net.backNeuronSet))
+	copy(neurons, net.backNeuronSet)
+	return neurons
 }
 
 func (net neuralnet) Compute(incoming map[string]float64) (map[string]bool, error) {
