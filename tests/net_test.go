@@ -156,7 +156,7 @@ func TestNet(t *testing.T) {
 	})
 }
 
-func getNeuron(t *testing.T, data interface{}) neuron.Neuron {
+func getNeuron(t *testing.T, data int) neuron.Neuron {
 	neu, err := neuron.NewNeuron(data)
 	if err != nil {
 		t.Fatalf("error intantiating neuron: %v", err)
