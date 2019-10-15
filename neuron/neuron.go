@@ -17,6 +17,7 @@ type Neuron interface {
 	GetSize() int
 	GetGene(int) int
 	Marshal() <-chan byte
+	Child(int) Neuron
 	String() string
 }
 
@@ -110,6 +111,14 @@ func (neu neuron) Compute(data ...float64) int {
 		return int(sum)
 	}
 	return 0
+}
+
+func (neu neuron) Child(dev int) Neuron {
+	child := make(neuron, neu.GetSize())
+	for i, value := range neu {
+		child[i] = value + int(rand.Int31n(int32(dev))) - (dev / 2)
+	}
+	return child
 }
 
 func (neu neuron) Marshal() <-chan byte {
