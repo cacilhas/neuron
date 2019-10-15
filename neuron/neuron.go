@@ -2,8 +2,8 @@ package neuron
 
 import (
 	"bytes"
+	"encoding/base32"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand"
@@ -12,9 +12,10 @@ import (
 
 // Neuron represents a neuron
 type Neuron interface {
+	Compute(...float64) int
+	Equals(Neuron) bool
 	GetSize() int
 	GetGene(int) int
-	Compute(...float64) int
 	Marshal() <-chan byte
 	String() string
 }
@@ -30,7 +31,7 @@ func NewNeuron(data interface{}) (Neuron, error) {
 		copy(neu, value)
 		return neu, nil
 
-	case neuron:
+	case Neuron:
 		return value, nil
 
 	case []byte:
@@ -50,7 +51,8 @@ func NewNeuron(data interface{}) (Neuron, error) {
 		return neu, nil
 
 	case string:
-		data, err := hex.DecodeString(strings.TrimSpace(value))
+		decoder := base32.HexEncoding.WithPadding(base32.NoPadding)
+		data, err := decoder.DecodeString(strings.TrimSpace(value))
 		if err == nil {
 			return neuronFromBytes(data)
 		}
@@ -61,12 +63,36 @@ func NewNeuron(data interface{}) (Neuron, error) {
 	}
 }
 
+// WriteToFile write a neuron to an io.Writer
+func WriteToFile(fp io.Writer, neu Neuron) error {
+	size := 2 + 4*neu.GetSize()
+	buf := make([]byte, size)
+	ch := neu.Marshal()
+	for i := 0; i < size; i++ {
+		buf[i] = <-ch
+	}
+	_, err := fp.Write(buf)
+	return err
+}
+
 func (neu neuron) GetSize() int {
 	return len(neu)
 }
 
 func (neu neuron) GetGene(index int) int {
 	return neu[index]
+}
+
+func (neu neuron) Equals(other Neuron) bool {
+	if neu.GetSize() != other.GetSize() {
+		return false
+	}
+	for i, value := range neu {
+		if value != other.GetGene(i) {
+			return false
+		}
+	}
+	return true
 }
 
 func (neu neuron) Compute(data ...float64) int {
@@ -92,7 +118,7 @@ func (neu neuron) Marshal() <-chan byte {
 	go func() {
 		size := neu.GetSize()
 		var buf [4]byte
-		binary.LittleEndian.PutUint16(buf[:], uint16(size))
+		binary.BigEndian.PutUint16(buf[:], uint16(size))
 		ch <- buf[0]
 		ch <- buf[1]
 
@@ -103,7 +129,7 @@ func (neu neuron) Marshal() <-chan byte {
 			} else {
 				cur = uint32(gene)
 			}
-			binary.LittleEndian.PutUint32(buf[:], cur)
+			binary.BigEndian.PutUint32(buf[:], cur)
 			for i := 0; i < 4; i++ {
 				ch <- buf[i]
 			}
@@ -114,13 +140,14 @@ func (neu neuron) Marshal() <-chan byte {
 }
 
 func (neu neuron) String() string {
-	size := neu.GetSize()
+	size := 2 + 4*neu.GetSize()
 	buf := make([]byte, size)
 	ch := neu.Marshal()
 	for i := 0; i < size; i++ {
 		buf[i] = <-ch
 	}
-	return hex.EncodeToString(buf)
+	encoder := base32.HexEncoding.WithPadding(base32.NoPadding)
+	return encoder.EncodeToString(buf)
 }
 
 func readFile(input io.Reader) (Neuron, error) {
@@ -128,7 +155,7 @@ func readFile(input io.Reader) (Neuron, error) {
 	if _, err := input.Read(buf[:]); err != nil {
 		return nil, err
 	}
-	size := 4 * int(binary.LittleEndian.Uint16(buf[:]))
+	size := 4 * int(binary.BigEndian.Uint16(buf[:]))
 	data := make([]byte, 2+size)
 	copy(data, buf[:])
 	if _, err := input.Read(data[2:]); err != nil {
@@ -141,7 +168,7 @@ func neuronFromBytes(input []byte) (Neuron, error) {
 	res := make(chan int)
 	ech := make(chan error)
 
-	size := int(binary.LittleEndian.Uint16(input))
+	size := int(binary.BigEndian.Uint16(input))
 	go processBytes(input[2:], size, res, ech)
 	neu := make(neuron, size)
 
@@ -167,7 +194,7 @@ func processBytes(body []byte, size int, res chan<- int, ech chan<- error) {
 	}()
 
 	for i := 0; i < size; i++ {
-		value := binary.LittleEndian.Uint32(body[i*4:])
+		value := binary.BigEndian.Uint32(body[i*4:])
 		if value >= 0x80000000 {
 			res <- int(int64(value) - int64(0x100000000))
 		} else {
