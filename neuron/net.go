@@ -15,6 +15,7 @@ type Layer []Neuron
 // NeuralNet represents a neural net
 type NeuralNet interface {
 	GetActions() []string
+	GetChild(int) NeuralNet
 	GetSensors() []string
 	GetNeurons(int) []Neuron
 	Compute(map[string]float64) (map[string]bool, error)
@@ -103,6 +104,18 @@ func LoadNet(input io.Reader) (NeuralNet, error) {
 
 	// Put everything together
 	return NewNeuralNet(sensors, actions, neurons)
+}
+
+func (net neuralnet) GetChild(dev int) NeuralNet {
+	neurons := make([]Layer, len(net.neurons))
+	for i, layer := range net.neurons {
+		current := make(Layer, len(layer))
+		for j, neuron := range layer {
+			current[j] = neuron.Child(dev)
+		}
+		neurons[i] = current
+	}
+	return &neuralnet{net.actions, neurons, net.sensors}
 }
 
 func (net neuralnet) GetActions() []string {

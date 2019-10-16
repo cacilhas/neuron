@@ -153,6 +153,14 @@ func TestNet(t *testing.T) {
 				t.Fatalf("expected %v, got %v", expected, got)
 			}
 		})
+
+		t.Run("GetChild", func(t *testing.T) {
+			child := net.GetChild(100)
+			expected := "SENSORS: sensor 1, sensor 2, sensor 3\nACTIONS: action 1, action 2\nNEURONS:\n001G00014JVVVVGN00002QG\n001VVVVU200000G5VVVVRS0\n\n001FVVVUU000002D\n0010000143VVVVV4\n\n-----\n"
+			if got := child.String(); got != expected {
+				t.Fatalf("expected:\n%v\ngot:%v", expected, got)
+			}
+		})
 	})
 }
 
