@@ -17,15 +17,15 @@ func TestNet(t *testing.T) {
 	t.Run("NewNeuralNet", func(t *testing.T) {
 		sensors := []string{"sensor 3", "sensor 2", "sensor 1"}
 		actions := []string{"action 2", "action 1"}
-		front := []neuron.Neuron{
+		front := neuron.Layer{
 			getNeuron(t, 3),
 			getNeuron(t, 3),
 		}
-		back := []neuron.Neuron{
+		back := neuron.Layer{
 			getNeuron(t, 2),
 			getNeuron(t, 2),
 		}
-		net, err := neuron.NewNeuralNet(sensors, actions, [][]neuron.Neuron{front, back})
+		net, err := neuron.NewNeuralNet(sensors, actions, []neuron.Layer{front, back})
 		if err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}

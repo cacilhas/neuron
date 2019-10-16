@@ -30,10 +30,11 @@ buildNeuron := func(length int) neuron.Neuron {
 	return neu
 }
 
-front := []neuron.Neuron{buildNeuron(2)}
-back := []neuron.Neuron{buildNeuron(1)}
+front := neuron.Layer{buildNeuron(2), buildNeuron(2), buildNeuron(2)}
+middle := neuron.Layer{buildNeuron(3), buildNeuron(3)}
+back := neuron.Layer{buildNeuron(2)}
 
-net := neuron.NewNeuralNet(sensors, actions, [][]neuron.Neuron{front, back})
+net := neuron.NewNeuralNet(sensors, actions, []neuron.Layer{front, middle, back})
 ```
 
 Using the network:
@@ -114,7 +115,7 @@ if err != nil {
 
 `NeuralNet` (`net` is the instance):
 
-- `NewNeuralNet(sensors, actions []string, front, back []Neuron) (NeuralNet, error)`
+- `NewNeuralNet(sensors, actions []string, neurons []Layer) (NeuralNet, error)`
   - Create a new neural network given the parameters.
 - `LoadNet(io.Reader) (NeuralNet, error)`
   - Load a neural network from a stream.
@@ -130,6 +131,12 @@ if err != nil {
   - Save the neural network into a stream.
 - `net.String() string`
   - Return the neural network serialisation.
+
+`neuron.Layer` is a layer of neurons:
+
+```go
+type Layer []Neuron
+```
 
 ## License
 

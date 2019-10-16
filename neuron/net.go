@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// Layer represents a layer of neurons
+type Layer []Neuron
+
 // NeuralNet represents a neural net
 type NeuralNet interface {
 	GetActions() []string
@@ -21,12 +24,12 @@ type NeuralNet interface {
 
 type neuralnet struct {
 	actions []string
-	neurons [][]Neuron
+	neurons []Layer
 	sensors []string
 }
 
 // NewNeuralNet instantiate a new neural net
-func NewNeuralNet(sensors, actions []string, neurons [][]Neuron) (NeuralNet, error) {
+func NewNeuralNet(sensors, actions []string, neurons []Layer) (NeuralNet, error) {
 	if len(neurons) == 0 {
 		return nil, fmt.Errorf("no neuron supplied")
 	}
@@ -50,7 +53,7 @@ func NewNeuralNet(sensors, actions []string, neurons [][]Neuron) (NeuralNet, err
 	for i, current := range neurons {
 		for j, neuron := range current {
 			if neuron.GetSize() != count {
-				return nil, fmt.Errorf("group %v, neuron %i: expected size %v, got %v", i, j, count, neuron.GetSize())
+				return nil, fmt.Errorf("group %v, neuron %v: expected size %v, got %v", i, j, count, neuron.GetSize())
 			}
 		}
 		count = len(current)
@@ -75,7 +78,7 @@ func LoadNet(input io.Reader) (NeuralNet, error) {
 	var err error
 	var sensors []string
 	var actions []string
-	var neurons [][]Neuron
+	var neurons []Layer
 
 	if sensors, err = loadStrings(input); err != nil {
 		return nil, err
@@ -88,7 +91,7 @@ func LoadNet(input io.Reader) (NeuralNet, error) {
 		return nil, err
 	}
 	size := int(binary.BigEndian.Uint16(buf[:]))
-	neurons = make([][]Neuron, size)
+	neurons = make([]Layer, size)
 
 	for i := 0; i < size; i++ {
 		if current, err := loadNeurons(input); err == nil {
