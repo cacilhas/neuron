@@ -43,7 +43,10 @@ net := neuron.NewNeuralNet(sensors, actions, []neuron.Layer{front, middle, back}
 Using the network:
 
 ```go
-params := []float64{-12, 246.125}
+params := map[string]float{
+	"distance": -12,
+	"height": 246.128,
+}
 res, _ := net.Compute(params)
 
 if res["jump"] {
