@@ -129,7 +129,7 @@ if err != nil {
   - Return the neural network’s actions.
 - `net.Compute(map[string]float64) (map[string]bool, error)`
   - Compute the processing. The `map[string]float64` parameter must supply one key for each network’s sensor, and the `map[string]bool` brings if each action must be performed.
-- `net.GetChildren(int) NeuralNet`
+- `net.GetChild(int) NeuralNet`
   - Return a new random child neural network, with the deviation `int`.
 - `net.GetSensors() []string`
   - Return the neural network’s sensors.
