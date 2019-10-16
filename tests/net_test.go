@@ -25,7 +25,7 @@ func TestNet(t *testing.T) {
 			getNeuron(t, 2),
 			getNeuron(t, 2),
 		}
-		net, err := neuron.NewNeuralNet(sensors, actions, front, back)
+		net, err := neuron.NewNeuralNet(sensors, actions, [][]neuron.Neuron{front, back})
 		if err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}
@@ -82,7 +82,7 @@ func TestNet(t *testing.T) {
 		})
 
 		t.Run("String", func(t *testing.T) {
-			expected := "SENSORS: sensor 1, sensor 2, sensor 3\nACTIONS: action 1, action 2\nFRONT NEURONS:\n001G00012BVVVVGQ00002O8\n001VVVVU280000G3VVVVS20\n\nBACK NEURONS:\n001FVVVV2S00002D\n0010000143VVVVTO\n\n-----\n"
+			expected := "SENSORS: sensor 1, sensor 2, sensor 3\nACTIONS: action 1, action 2\nNEURONS:\n001G00012BVVVVGQ00002O8\n001VVVVU280000G3VVVVS20\n\n001FVVVV2S00002D\n0010000143VVVVTO\n\n-----\n"
 			if got := net.String(); got != expected {
 				t.Fatalf("expected\n%v\ngot\n%v", expected, got)
 			}
@@ -97,7 +97,7 @@ func TestNet(t *testing.T) {
 			var buf bytes.Buffer
 			buf.ReadFrom(r)
 			got := base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString(buf.Bytes())
-			expected := "01OG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000006000049FVVVU380000B1001VVVVU280000G3VVVVS20008000002VVVVU5O00004Q0020000287VVVVRG0000000"
+			expected := "01QG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000004000001G00012BVVVVGQ00002O800FVVVVGI000040VVVVV0G002000000NVVVVHE000016G00G0000I1VVVVUS0000000"
 			if got != expected {
 				t.Fatalf("expected %v, got %v", expected, got)
 			}
@@ -105,7 +105,7 @@ func TestNet(t *testing.T) {
 	})
 
 	t.Run("LoadNet", func(t *testing.T) {
-		data, _ := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString("01OG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000006000049FVVVU380000B1001VVVVU280000G3VVVVS20008000002VVVVU5O00004Q0020000287VVVVRG0000000")
+		data, _ := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString("01QG00000C000SR5DPPMUSH064076PBEEDNN481I01PMARJJDTP20CO000100031CDQ6IRRE40OG0OB3EHKMURH0680000G000004000001G00012BVVVVGQ00002O800FVVVVGI000040VVVVV0G002000000NVVVVHE000016G00G0000I1VVVVUS0000000")
 		r, w := io.Pipe()
 		go func() {
 			w.Write(data)
@@ -132,7 +132,7 @@ func TestNet(t *testing.T) {
 
 		t.Run("GetFrontNeurons", func(t *testing.T) {
 			var buf strings.Builder
-			for _, neu := range net.GetFrontNeurons() {
+			for _, neu := range net.GetNeurons(0) {
 				buf.WriteString(neu.String())
 				buf.WriteByte(0x20)
 			}
@@ -144,7 +144,7 @@ func TestNet(t *testing.T) {
 
 		t.Run("GetBackNeurons", func(t *testing.T) {
 			var buf strings.Builder
-			for _, neu := range net.GetBackNeurons() {
+			for _, neu := range net.GetNeurons(1) {
 				buf.WriteString(neu.String())
 				buf.WriteByte(0x20)
 			}

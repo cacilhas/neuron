@@ -33,15 +33,8 @@ buildNeuron := func(length int) neuron.Neuron {
 front := []neuron.Neuron{buildNeuron(2)}
 back := []neuron.Neuron{buildNeuron(1)}
 
-net := neuron.NewNeuralNet(sensors, actions, front, back)
+net := neuron.NewNeuralNet(sensors, actions, [][]neuron.Neuron{front, back})
 ```
-
-Notes:
-
-- You must supply as many front neurons as actions.
-- You must supply as many back neurons as actions.
-- Each front neuron must accept as many sensors as the supplied sensors.
-- Each back neuron must accept as many sensors as front neurons.
 
 Using the network:
 
@@ -127,12 +120,10 @@ if err != nil {
   - Load a neural network from a stream.
 - `net.GetActions() []string`
   - Return the neural network’s actions.
-- `net.BackNeurons() []Neuron`
-  - Return the neural network’s back neurons.
 - `net.Compute(map[string]float64) (map[string]bool, error)`
   - Compute the processing. The `map[string]float64` parameter must supply one key for each network’s sensor, and the `map[string]bool` brings if each action must be performed.
-- `net.FrontNeurons() []Neuron`
-  - Return the neural network’s front neurons.
+- `net.Neurons(index) []Neuron`
+  - Return the neural network’s `int` layer of neurons (`nil` if `int` is too big).
 - `net.GetSensors() []string`
   - Return the neural network’s sensors.
 - `net.Save(io.Writer) error`

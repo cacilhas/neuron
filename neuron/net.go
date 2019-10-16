@@ -13,22 +13,24 @@ import (
 type NeuralNet interface {
 	GetActions() []string
 	GetSensors() []string
-	GetFrontNeurons() []Neuron
-	GetBackNeurons() []Neuron
+	GetNeurons(int) []Neuron
 	Compute(map[string]float64) (map[string]bool, error)
 	Save(io.Writer) error
 	String() string
 }
 
 type neuralnet struct {
-	actions        []string
-	frontNeuronSet []Neuron
-	backNeuronSet  []Neuron
-	sensors        []string
+	actions []string
+	neurons [][]Neuron
+	sensors []string
 }
 
 // NewNeuralNet instantiate a new neural net
-func NewNeuralNet(sensors, actions []string, frontNeuronSet, backNeuronSet []Neuron) (NeuralNet, error) {
+func NewNeuralNet(sensors, actions []string, neurons [][]Neuron) (NeuralNet, error) {
+	if len(neurons) == 0 {
+		return nil, fmt.Errorf("no neuron supplied")
+	}
+
 	sortedSensors := usort(sensors)
 	sortedActions := usort(actions)
 	sensorsCount := len(sortedSensors)
@@ -42,32 +44,29 @@ func NewNeuralNet(sensors, actions []string, frontNeuronSet, backNeuronSet []Neu
 		return nil, fmt.Errorf("no action supplied")
 	}
 
-	if len(frontNeuronSet) != actionsCount {
-		return nil, fmt.Errorf("expected %v front neurons, got %v", actionsCount, len(frontNeuronSet))
-	}
+	count := sensorsCount
+	var last []Neuron
 
-	if len(backNeuronSet) != actionsCount {
-		return nil, fmt.Errorf("expected %v back neurons, got %v", actionsCount, len(backNeuronSet))
-	}
-
-	for i, neuron := range frontNeuronSet {
-		if neuron.GetSize() != sensorsCount {
-			return nil, fmt.Errorf("[fron neuron %v] expected %v genes, got %v", i, sensorsCount, neuron.GetSize())
+	for i, current := range neurons {
+		for j, neuron := range current {
+			if neuron.GetSize() != count {
+				return nil, fmt.Errorf("group %v, neuron %i: expected size %v, got %v", i, j, count, neuron.GetSize())
+			}
 		}
+		count = len(current)
+		last = current
+	}
+	if len(last) != actionsCount {
+		return nil, fmt.Errorf("expected one last neuron [%v] for each action [%v]", len(last), actionsCount)
 	}
 
-	for i, neuron := range backNeuronSet {
-		if neuron.GetSize() != actionsCount {
-			return nil, fmt.Errorf("[back neuron %v] expected %v genes, got %v", i, actionsCount, neuron.GetSize())
-		}
-	}
-
-	return &neuralnet{sortedActions, frontNeuronSet, backNeuronSet, sortedSensors}, nil
+	return &neuralnet{sortedActions, neurons, sortedSensors}, nil
 }
 
 // LoadNet load a new neural net from an I/O reader
 func LoadNet(input io.Reader) (NeuralNet, error) {
 	var buf [4]byte
+
 	// Discard long size
 	if _, err := input.Read(buf[:]); err != nil {
 		return nil, err
@@ -76,8 +75,7 @@ func LoadNet(input io.Reader) (NeuralNet, error) {
 	var err error
 	var sensors []string
 	var actions []string
-	var front []Neuron
-	var back []Neuron
+	var neurons [][]Neuron
 
 	if sensors, err = loadStrings(input); err != nil {
 		return nil, err
@@ -85,15 +83,23 @@ func LoadNet(input io.Reader) (NeuralNet, error) {
 	if actions, err = loadStrings(input); err != nil {
 		return nil, err
 	}
-	if front, err = loadNeurons(input); err != nil {
+
+	if _, err := input.Read(buf[:]); err != nil {
 		return nil, err
 	}
-	if back, err = loadNeurons(input); err != nil {
-		return nil, err
+	size := int(binary.BigEndian.Uint16(buf[:]))
+	neurons = make([][]Neuron, size)
+
+	for i := 0; i < size; i++ {
+		if current, err := loadNeurons(input); err == nil {
+			neurons[i] = current
+		} else {
+			return nil, err
+		}
 	}
 
 	// Put everything together
-	return NewNeuralNet(sensors, actions, front, back)
+	return NewNeuralNet(sensors, actions, neurons)
 }
 
 func (net neuralnet) GetActions() []string {
@@ -108,15 +114,12 @@ func (net neuralnet) GetSensors() []string {
 	return sensors
 }
 
-func (net neuralnet) GetFrontNeurons() []Neuron {
-	neurons := make([]Neuron, len(net.frontNeuronSet))
-	copy(neurons, net.frontNeuronSet)
-	return neurons
-}
-
-func (net neuralnet) GetBackNeurons() []Neuron {
-	neurons := make([]Neuron, len(net.backNeuronSet))
-	copy(neurons, net.backNeuronSet)
+func (net neuralnet) GetNeurons(index int) []Neuron {
+	if index >= len(net.neurons) {
+		return nil
+	}
+	neurons := make([]Neuron, len(net.neurons[index]))
+	copy(neurons, net.neurons[index])
 	return neurons
 }
 
@@ -125,24 +128,22 @@ func (net neuralnet) Compute(incoming map[string]float64) (map[string]bool, erro
 		return nil, err
 	}
 
-	middle := make([]int, len(net.actions))
+	partial := make([]float64, len(incoming))
+	for i, sensor := range net.sensors {
+		partial[i] = incoming[sensor]
+	}
 
-	for i, neuron := range net.frontNeuronSet {
-		input := make([]float64, len(incoming))
-		for j, sensor := range net.sensors {
-			input[j] = incoming[sensor]
+	for _, neurons := range net.neurons {
+		nextStep := make([]float64, len(neurons))
+		for i, neuron := range neurons {
+			nextStep[i] = float64(neuron.Compute(partial...))
 		}
-		middle[i] = neuron.Compute(input...)
+		partial = nextStep
 	}
 
 	res := make(map[string]bool)
-
-	for i, neuron := range net.backNeuronSet {
-		input := make([]float64, len(middle))
-		for j, value := range middle {
-			input[j] = float64(value)
-		}
-		res[net.actions[i]] = neuron.Compute(input...) > 0
+	for i, action := range net.actions {
+		res[action] = partial[i] > 0
 	}
 
 	return res, nil
@@ -170,17 +171,15 @@ func (net neuralnet) String() string {
 	buf.WriteString(strings.Join(net.sensors, ", "))
 	buf.WriteString("\nACTIONS: ")
 	buf.WriteString(strings.Join(net.actions, ", "))
-	buf.WriteString("\nFRONT NEURONS:\n")
-	for _, neuron := range net.frontNeuronSet {
-		buf.WriteString(neuron.String())
-		buf.WriteString("\n")
+	buf.WriteString("\nNEURONS:\n")
+	for _, neurons := range net.neurons {
+		for _, neuron := range neurons {
+			buf.WriteString(neuron.String())
+			buf.WriteByte(0x0a)
+		}
+		buf.WriteByte(0x0a)
 	}
-	buf.WriteString("\nBACK NEURONS:\n")
-	for _, neuron := range net.backNeuronSet {
-		buf.WriteString(neuron.String())
-		buf.WriteString("\n")
-	}
-	buf.WriteString("\n-----\n")
+	buf.WriteString("-----\n")
 	return buf.String()
 }
 
@@ -204,27 +203,19 @@ func (net neuralnet) Save(out io.Writer) error {
 		buf.WriteByte(0x00)
 	}
 
-	// Serialise front neurons
-	binary.BigEndian.PutUint16(current[:], uint16(len(net.frontNeuronSet)))
+	// Serialise neurons
+	binary.BigEndian.PutUint16(current[:], uint16(len(net.neurons)))
 	buf.Write(current[:])
-	for _, neuron := range net.frontNeuronSet {
-		ch := neuron.Marshal()
-		value, ok := <-ch
-		for ok {
-			buf.WriteByte(value)
-			value, ok = <-ch
-		}
-	}
-
-	// Serialise back neurons
-	binary.BigEndian.PutUint16(current[:], uint16(len(net.backNeuronSet)))
-	buf.Write(current[:])
-	for _, neuron := range net.backNeuronSet {
-		ch := neuron.Marshal()
-		value, ok := <-ch
-		for ok {
-			buf.WriteByte(value)
-			value, ok = <-ch
+	for _, neurons := range net.neurons {
+		binary.BigEndian.PutUint16(current[:], uint16(len(neurons)))
+		buf.Write(current[:])
+		for _, neuron := range neurons {
+			ch := neuron.Marshal()
+			value, ok := <-ch
+			for ok {
+				buf.WriteByte(value)
+				value, ok = <-ch
+			}
 		}
 	}
 
