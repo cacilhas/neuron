@@ -30,8 +30,11 @@ buildNeuron := func(length int) neuron.Neuron {
 	return neu
 }
 
+// 2 sensors:
 front := neuron.Layer{buildNeuron(2), buildNeuron(2), buildNeuron(2)}
+// 3 front neurons:
 middle := neuron.Layer{buildNeuron(3), buildNeuron(3)}
+// 2 middle neurons, one back one for each action:
 back := neuron.Layer{buildNeuron(2)}
 
 net := neuron.NewNeuralNet(sensors, actions, []neuron.Layer{front, middle, back})
