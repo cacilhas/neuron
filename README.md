@@ -129,10 +129,12 @@ if err != nil {
   - Return the neural network’s actions.
 - `net.Compute(map[string]float64) (map[string]bool, error)`
   - Compute the processing. The `map[string]float64` parameter must supply one key for each network’s sensor, and the `map[string]bool` brings if each action must be performed.
-- `net.Neurons(index) []Neuron`
-  - Return the neural network’s `int` layer of neurons (`nil` if `int` is too big).
+- `net.GetChildren(int) NeuralNet`
+  - Return a new random child neural network, with the deviation `int`.
 - `net.GetSensors() []string`
   - Return the neural network’s sensors.
+- `net.Neurons(index) []Neuron`
+  - Return the neural network’s `int` layer of neurons (`nil` if `int` is too big).
 - `net.Save(io.Writer) error`
   - Save the neural network into a stream.
 - `net.String() string`
